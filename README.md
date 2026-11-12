@@ -31,11 +31,12 @@ npm run build
 
 ## สถาปัตยกรรมไฟล์
 
+- `model/ml.py` — สคริปต์ Python Pipeline ต้นฉบับ (การคลีนข้อมูล, As-Of Matching, เทรน LightGBM/RF/LR และจูน Threshold)
+- `src/lib/data/mlData.ts` — Inference Engine ฝั่งเว็บ (ถอดแบบ Logic และ Feature Importance จาก `ml.py` มาคำนวณแบบ Real-time บนเบราว์เซอร์)
 - `src/routes/+layout.svelte` — Layout หลัก (Navbar, Container, Footer)
 - `src/routes/+page.svelte` — หน้าทำนายผล (`/`)
 - `src/routes/models/+page.svelte` — หน้าเปรียบเทียบโมเดล (`/models`)
 - `src/routes/samples/+page.svelte` — หน้าตัวอย่างข้อมูลทดสอบ (`/samples`)
-- `src/lib/data/mlData.ts` — ข้อมูล Portfolio โปรโมชัน, Presets ลูกค้า และฟังก์ชันคำนวณการทำนายผล
 - `src/lib/components/PredictorForm.svelte` — ฟอร์มกรอกข้อมูลและแสดงผลการตัดสินใจ
 - `src/lib/components/ModelTable.svelte` — ตารางเปรียบเทียบผลโมเดล
 - `src/lib/components/SampleData.svelte` — ตารางแสดงตัวอย่างข้อมูลทดสอบ
