@@ -11,7 +11,6 @@ node_modules
 # ML Data & Output
 model/data/
 model/output/
-*.pkl
 
 # OS
 .DS_Store

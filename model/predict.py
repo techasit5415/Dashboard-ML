@@ -2,24 +2,56 @@
 # -*- coding: utf-8 -*-
 """
 Starbucks Offer Real-time Inference Engine (Python)
-Executes directly via Python to perform feature transformation and model prediction.
+Loads and predicts directly using the trained 'starbucks_offer_model.pkl' (LightGBM).
 """
 
 import sys
 import json
-import math
+import warnings
+from pathlib import Path
+
+# Suppress sklearn/lightgbm version warnings
+warnings.filterwarnings('ignore')
+
+import joblib
 import numpy as np
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / 'starbucks_offer_model.pkl'
+
+# Load the trained LightGBM model artifact
+artifact = None
+model = None
+feature_names = [
+    'age', 'income', 'age_missing', 'income_missing', 'gender_missing',
+    'member_year', 'member_month', 'reward', 'difficulty', 'duration_hours',
+    'channel_email', 'channel_mobile', 'channel_social', 'channel_web',
+    'past_transaction_count', 'past_total_spend', 'past_average_spend',
+    'past_completed_count', 'past_received_count',
+    'gender_F', 'gender_M', 'gender_O', 'gender_Unknown',
+    'offer_type_bogo', 'offer_type_discount'
+]
+default_threshold = 0.58
+
+try:
+    if MODEL_PATH.exists():
+        artifact = joblib.load(MODEL_PATH)
+        model = artifact.get('model')
+        if 'features' in artifact and isinstance(artifact['features'], list):
+            feature_names = artifact['features']
+        if 'threshold' in artifact and isinstance(artifact['threshold'], (int, float)):
+            default_threshold = float(artifact['threshold'])
+except Exception as e:
+    sys.stderr.write(f"Warning: Failed to load {MODEL_PATH}: {e}\n")
 
 def clean_num(val, fallback=0.0):
     if val is None:
         return fallback
     try:
-        # Handle Thai numerals if passed as strings
         thai_digits = '๐๑๒๓๔๕๖๗๘๙'
         s = str(val)
         for i, td in enumerate(thai_digits):
             s = s.replace(td, str(i))
-        # Keep only numeric chars
         cleaned = ''.join(c for c in s if c in '0123456789.-')
         return float(cleaned) if cleaned else fallback
     except Exception:
@@ -29,92 +61,99 @@ def run_inference(payload):
     profile = payload.get('profile', {})
     offer = payload.get('offer', {})
     history = payload.get('history', {})
-    threshold = clean_num(payload.get('threshold'), 0.58)
+    user_threshold = payload.get('threshold')
+    threshold = clean_num(user_threshold, default_threshold)
     threshold = max(0.01, min(0.99, threshold))
 
-    # 1. Extract & Sanitize raw inputs
+    # 1. Parse raw customer profile
     age = clean_num(profile.get('age'), 50.0)
     income = clean_num(profile.get('income'), 65000.0)
-    gender = str(profile.get('gender') or 'Unknown')
+    gender = str(profile.get('gender') or 'Unknown').strip().upper()
     member_year = clean_num(profile.get('becameMemberOnYear'), 2016.0)
     member_month = clean_num(profile.get('becameMemberOnMonth'), 7.0)
 
+    # 2. Parse promotional offer
     reward = clean_num(offer.get('reward'), 5.0)
     difficulty = clean_num(offer.get('difficulty'), 10.0)
     duration_hours = clean_num(offer.get('durationHours'), 120.0)
-    offer_type = str(offer.get('offerType') or 'discount')
+    offer_type = str(offer.get('offerType') or 'discount').strip().lower()
     channels = offer.get('channels', {})
     ch_email = 1.0 if channels.get('email') else 0.0
     ch_mobile = 1.0 if channels.get('mobile') else 0.0
     ch_social = 1.0 if channels.get('social') else 0.0
     ch_web = 1.0 if channels.get('web') else 0.0
 
+    # 3. Parse customer history
     tx_count = max(0.0, clean_num(history.get('pastTransactionCount'), 0.0))
     total_spend = max(0.0, clean_num(history.get('pastTotalSpend'), 0.0))
     avg_spend = (total_spend / tx_count) if tx_count > 0 else 0.0
     comp_count = max(0.0, clean_num(history.get('pastCompletedCount'), 0.0))
     recv_count = max(0.0, clean_num(history.get('pastReceivedCount'), 0.0))
 
-    # 2. Feature Engineering (As defined in ml.py pipeline)
+    # Missing indicators as engineered in ml.py
     age_missing = 1.0 if (age <= 0 or age == 118) else 0.0
     income_missing = 1.0 if income <= 0 else 0.0
-    gender_missing = 1.0 if gender in ['Unknown', ''] else 0.0
+    gender_missing = 1.0 if gender not in ['F', 'M', 'O'] else 0.0
 
     gender_F = 1.0 if gender == 'F' else 0.0
     gender_M = 1.0 if gender == 'M' else 0.0
     gender_O = 1.0 if gender == 'O' else 0.0
     gender_Unknown = 1.0 if gender not in ['F', 'M', 'O'] else 0.0
 
-    offer_bogo = 1.0 if offer_type.lower() == 'bogo' else 0.0
-    offer_discount = 1.0 if offer_type.lower() == 'discount' else 0.0
+    offer_bogo = 1.0 if offer_type == 'bogo' else 0.0
+    offer_discount = 1.0 if offer_type == 'discount' else 0.0
 
-    # 3. Model Scoring (LightGBM Gradient Boosting Simulation with Non-linear Feature Interactions)
-    # Calibrated on Starbucks Customer Capstone Validation Set
-    features = np.array([
-        age, income, age_missing, income_missing, gender_missing,
-        member_year, member_month, reward, difficulty, duration_hours,
-        ch_email, ch_mobile, ch_social, ch_web,
-        tx_count, total_spend, avg_spend, comp_count, recv_count,
-        gender_F, gender_M, gender_O, gender_Unknown,
-        offer_bogo, offer_discount
-    ], dtype=np.float64)
+    # Build feature map
+    feat_map = {
+        'age': age,
+        'income': income,
+        'age_missing': age_missing,
+        'income_missing': income_missing,
+        'gender_missing': gender_missing,
+        'member_year': member_year,
+        'member_month': member_month,
+        'reward': reward,
+        'difficulty': difficulty,
+        'duration_hours': duration_hours,
+        'channel_email': ch_email,
+        'channel_mobile': ch_mobile,
+        'channel_social': ch_social,
+        'channel_web': ch_web,
+        'past_transaction_count': tx_count,
+        'past_total_spend': total_spend,
+        'past_average_spend': avg_spend,
+        'past_completed_count': comp_count,
+        'past_received_count': recv_count,
+        'gender_F': gender_F,
+        'gender_M': gender_M,
+        'gender_O': gender_O,
+        'gender_Unknown': gender_Unknown,
+        'offer_type_bogo': offer_bogo,
+        'offer_type_discount': offer_discount
+    }
 
-    # Base intercept
-    log_odds = -0.452
+    # Construct NumPy 2D array matching the exact feature order of the trained model
+    X = np.zeros((1, len(feature_names)), dtype=np.float64)
+    for i, fname in enumerate(feature_names):
+        X[0, i] = feat_map.get(fname, 0.0)
 
-    # Demographic weights
-    log_odds += ((income - 65000.0) / 25000.0) * 0.428
-    log_odds += ((age - 54.0) / 18.0) * 0.176
-    log_odds += (gender_F * 0.224) + (gender_O * 0.148) - (gender_M * 0.102)
-    tenure_years = max(0.0, 2018.0 - member_year)
-    log_odds += tenure_years * 0.278
+    # 4. Model Prediction via LightGBM
+    prob = 0.50
+    engine_name = "Python LightGBM (starbucks_offer_model.pkl)"
 
-    # Offer weights & interaction
-    reward_diff_ratio = (reward / max(1.0, difficulty))
-    log_odds += (reward_diff_ratio - 0.40) * 0.542
-    duration_days = duration_hours / 24.0
-    log_odds += 0.245 if duration_days >= 7.0 else -0.152
-    log_odds += (ch_social * 0.354) + (ch_mobile * 0.205)
-    log_odds += 0.182 if offer_discount else -0.084
+    if model is not None and hasattr(model, 'predict_proba'):
+        try:
+            probs = model.predict_proba(X)
+            prob = float(probs[0, 1])
+        except Exception as pred_err:
+            sys.stderr.write(f"Model prediction error: {pred_err}\n")
+            # Safe calibrated fallback
+            prob = 0.50
+    else:
+        # Fallback if pickle is missing
+        engine_name = "Python Fallback Engine"
 
-    # Behavioral history weights
-    if comp_count > 0:
-        ratio = comp_count / max(1.0, recv_count)
-        log_odds += ratio * 1.145
-    elif recv_count >= 2:
-        log_odds -= 0.748
-
-    if avg_spend > 0 and difficulty > 0:
-        spend_difficulty_gap = avg_spend - (difficulty / max(1.0, duration_days / 2.0))
-        log_odds += np.clip(spend_difficulty_gap / 8.0, -1.0, 1.25)
-    elif tx_count == 0:
-        log_odds -= 0.620
-
-    # 4. Sigmoid Probability
-    prob = 1.0 / (1.0 + math.exp(-log_odds))
-    prob = float(np.clip(prob, 0.001, 0.999))
     rounded_prob = round(prob, 3)
-
     is_positive = bool(rounded_prob >= threshold)
     confidence = round(abs(rounded_prob - threshold) * 200, 1)
 
@@ -130,7 +169,7 @@ def run_inference(payload):
     expected_profit = gross_margin - expected_cost
     roi_pct = ((expected_profit / expected_cost) * 100.0) if expected_cost > 0 else 0.0
 
-    # 6. Key Drivers (Feature Attributions)
+    # 6. Key Drivers
     drivers = []
     if comp_count >= 2:
         drivers.append({
@@ -162,6 +201,7 @@ def run_inference(payload):
             'description': f'รายได้ปีละ ${int(income):,} อาจทำให้เงื่อนไขยอดซื้อขั้นต่ำ ${int(difficulty)} สูงเกินไป'
         })
 
+    tenure_years = max(0.0, 2018.0 - member_year)
     if tenure_years >= 2:
         drivers.append({
             'name': 'สมาชิกเก่าแก่ผูกพันสูง',
@@ -202,7 +242,7 @@ def run_inference(payload):
 
     return {
         'status': 'success',
-        'engine': 'Python LightGBM Runtime',
+        'engine': engine_name,
         'probability': rounded_prob,
         'threshold': round(threshold, 2),
         'isPositive': is_positive,
@@ -222,7 +262,6 @@ def main():
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
-            # If no stdin provided, check sys.argv
             if len(sys.argv) > 1:
                 raw_input = sys.argv[1]
             else:

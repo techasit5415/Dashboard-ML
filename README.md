@@ -31,13 +31,15 @@ npm run build
 
 ## สถาปัตยกรรมไฟล์
 
+- `model/starbucks_offer_model.pkl` — ไฟล์โมเดล LightGBM ที่เทรนแล้ว (Artifact บรรจุโมเดล, รายชื่อ 25 Features และ Threshold 0.58)
+- `model/predict.py` — สคริปต์ Python Runtime โหลด `starbucks_offer_model.pkl` และคำนวณ `predict_proba()` ส่งค่าผ่าน JSON
 - `model/ml.py` — สคริปต์ Python Pipeline ต้นฉบับ (การคลีนข้อมูล, As-Of Matching, เทรน LightGBM/RF/LR และจูน Threshold)
-- `src/lib/data/mlData.ts` — Inference Engine ฝั่งเว็บ (ถอดแบบ Logic และ Feature Importance จาก `ml.py` มาคำนวณแบบ Real-time บนเบราว์เซอร์)
+- `src/routes/api/predict/+server.ts` — SvelteKit API Endpoint เรียกใช้ Python Model แบบเรียลไทม์
 - `src/routes/+layout.svelte` — Layout หลัก (Navbar, Container, Footer)
-- `src/routes/+page.svelte` — หน้าทำนายผล (`/`)
+- `src/routes/+page.svelte` — หน้าทำนายผล (`/`) พร้อม Skeleton Loading UI ขณะรอผลจากโมเดล
 - `src/routes/models/+page.svelte` — หน้าเปรียบเทียบโมเดล (`/models`)
 - `src/routes/samples/+page.svelte` — หน้าตัวอย่างข้อมูลทดสอบ (`/samples`)
-- `src/lib/components/PredictorForm.svelte` — ฟอร์มกรอกข้อมูลและแสดงผลการตัดสินใจ
+- `src/lib/components/PredictorForm.svelte` — ฟอร์มกรอกข้อมูลและแสดงผลการตัดสินใจจากโมเดลจริง
 - `src/lib/components/ModelTable.svelte` — ตารางเปรียบเทียบผลโมเดล
 - `src/lib/components/SampleData.svelte` — ตารางแสดงตัวอย่างข้อมูลทดสอบ
 - `docs/PROJECT_DOCUMENTATION.md` — เอกสารอธิบายการทำงานและตรรกะการคำนวณอย่างละเอียด
