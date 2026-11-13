@@ -1,5 +1,6 @@
 <script lang="ts">
 	import './layout.css';
+	import { page } from '$app/state';
 	import Navbar from '#lib/components/Navbar.svelte';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
@@ -17,7 +18,9 @@
 
 	<!-- Main Workspace Canvas -->
 	<main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
-		{@render children()}
+		{#key page.url.pathname}
+			{@render children()}
+		{/key}
 	</main>
 
 	<!-- Clean Minimal Footer -->

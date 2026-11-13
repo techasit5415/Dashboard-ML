@@ -11,7 +11,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
     const result = await new Promise<any>((resolve, reject) => {
       const py = spawn('python', [scriptPath], {
-        windowsHide: true
+        windowsHide: true,
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUTF8: '1'
+        }
       });
 
       let stdout = '';
@@ -55,7 +60,7 @@ export const POST: RequestHandler = async ({ request }) => {
         status: 'error',
         message: error?.message || 'Inference error',
         probability: 0.5,
-        threshold: 0.58,
+        threshold: 0.41,
         isPositive: false,
         confidenceScore: 0,
         recommendationTitle: 'เกิดข้อผิดพลาดในการเรียก Python Model',

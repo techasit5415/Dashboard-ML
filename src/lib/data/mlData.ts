@@ -90,8 +90,8 @@ export const CUSTOMER_PRESETS: Array<{
   history: CustomerHistory;
 }> = [
   {
-    name: 'Loyal High Spender (Female, 52)',
-    tagline: 'High income, long membership tenure, very active purchases',
+    name: '1. ตอบรับสูงมาก — Loyal High Spender (F, 52)',
+    tagline: 'High income, long tenure, strong offer completion history (~93%)',
     profile: {
       age: 52,
       gender: 'F',
@@ -108,26 +108,8 @@ export const CUSTOMER_PRESETS: Array<{
     }
   },
   {
-    name: 'Price-Sensitive Deal Hunter (Male, 28)',
-    tagline: 'Moderate income, only buys when offers are active',
-    profile: {
-      age: 28,
-      gender: 'M',
-      income: 48000,
-      becameMemberOnYear: 2017,
-      becameMemberOnMonth: 4
-    },
-    history: {
-      pastTransactionCount: 6,
-      pastTotalSpend: 42.0,
-      pastAverageSpend: 7.0,
-      pastCompletedCount: 2,
-      pastReceivedCount: 4
-    }
-  },
-  {
-    name: 'Newly Joined Member (Other, 23)',
-    tagline: 'Joined this year, few recorded transactions',
+    name: '2. ตอบรับ (SEND OFFER) — Newly Joined Member (O, 23)',
+    tagline: 'Moderate likelihood above 41% threshold (~73%)',
     profile: {
       age: 23,
       gender: 'O',
@@ -144,21 +126,39 @@ export const CUSTOMER_PRESETS: Array<{
     }
   },
   {
-    name: 'Dormant Member (Male, 61)',
-    tagline: 'High age, no transactions in recent cycle',
+    name: '3. ก้ำกึ่งใกล้ Threshold 41% — Borderline (M, 28)',
+    tagline: 'Near 41% cut-off: flips between DO NOT SEND and SEND when tuning threshold (~38%)',
     profile: {
-      age: 61,
+      age: 28,
       gender: 'M',
-      income: 56000,
-      becameMemberOnYear: 2017,
-      becameMemberOnMonth: 11
+      income: 45000,
+      becameMemberOnYear: 2018,
+      becameMemberOnMonth: 5
     },
     history: {
-      pastTransactionCount: 0,
-      pastTotalSpend: 0,
-      pastAverageSpend: 0,
+      pastTransactionCount: 2,
+      pastTotalSpend: 14.0,
+      pastAverageSpend: 7.0,
+      pastCompletedCount: 1,
+      pastReceivedCount: 3
+    }
+  },
+  {
+    name: '4. ไม่ตอบรับ (DO NOT SEND) — Low Responder (M, 24)',
+    tagline: 'Low income, joined 2018, 0/3 offer completions (~30%)',
+    profile: {
+      age: 24,
+      gender: 'M',
+      income: 35000,
+      becameMemberOnYear: 2018,
+      becameMemberOnMonth: 7
+    },
+    history: {
+      pastTransactionCount: 1,
+      pastTotalSpend: 5.0,
+      pastAverageSpend: 5.0,
       pastCompletedCount: 0,
-      pastReceivedCount: 2
+      pastReceivedCount: 3
     }
   }
 ];
@@ -169,9 +169,9 @@ export const MODEL_METRICS: ModelMetricComparison[] = [
     tag: 'Production Champion',
     isChampion: true,
     trainType: 'Tree-based Gradient Boosting (Raw Features)',
-    accuracy: 0.7462,
-    f1Score: 0.7385,
-    rocAuc: 0.8241,
+    accuracy: 0.7824,
+    f1Score: 0.8015,
+    rocAuc: 0.8597,
     trainTimeSec: 1.45,
     strengths: [
       'Captures non-linear spending thresholds & reward elasticity',
@@ -185,16 +185,17 @@ export const MODEL_METRICS: ModelMetricComparison[] = [
       n_estimators: 100,
       max_depth: 5,
       learning_rate: 0.05,
-      optimal_threshold: 0.58
+      num_leaves: 31,
+      optimal_threshold: 0.41
     }
   },
   {
     name: 'Random Forest',
     tag: 'Ensemble Baseline',
     trainType: 'Bagging Trees (Raw Features)',
-    accuracy: 0.7184,
-    f1Score: 0.7092,
-    rocAuc: 0.7925,
+    accuracy: 0.7778,
+    f1Score: 0.7997,
+    rocAuc: 0.8525,
     trainTimeSec: 4.82,
     strengths: [
       'Resistant to outliers and extreme transaction amounts',
@@ -214,9 +215,9 @@ export const MODEL_METRICS: ModelMetricComparison[] = [
     name: 'Logistic Regression',
     tag: 'Linear Baseline',
     trainType: 'L2 Regularized (Standard Scaled Features)',
-    accuracy: 0.6841,
-    f1Score: 0.6724,
-    rocAuc: 0.7410,
+    accuracy: 0.7464,
+    f1Score: 0.7728,
+    rocAuc: 0.8220,
     trainTimeSec: 0.82,
     strengths: [
       'Highly interpretable linear coefficients',
@@ -231,6 +232,27 @@ export const MODEL_METRICS: ModelMetricComparison[] = [
       penalty: 'l2'
     }
   }
+];
+
+export interface FeatureImportanceItem {
+  feature: string;
+  label: string;
+  splits: number;
+  pct: number;
+  category: 'Customer' | 'History' | 'Offer';
+}
+
+export const FEATURE_IMPORTANCES: FeatureImportanceItem[] = [
+  { feature: 'member_year', label: 'ปีที่สมัครสมาชิก (member_year)', splits: 372, pct: 12.6, category: 'Customer' },
+  { feature: 'past_average_spend', label: 'ยอดซื้อเฉลี่ยต่อบิล (past_average_spend)', splits: 349, pct: 11.8, category: 'History' },
+  { feature: 'income', label: 'รายได้ต่อปี (income)', splits: 304, pct: 10.3, category: 'Customer' },
+  { feature: 'past_total_spend', label: 'ยอดซื้อสะสมในอดีต (past_total_spend)', splits: 299, pct: 10.1, category: 'History' },
+  { feature: 'reward', label: 'มูลค่ารางวัล (reward)', splits: 270, pct: 9.2, category: 'Offer' },
+  { feature: 'member_month', label: 'เดือนที่สมัครสมาชิก (member_month)', splits: 242, pct: 8.2, category: 'Customer' },
+  { feature: 'past_transaction_count', label: 'จำนวนครั้งที่เคยซื้อ (past_transaction_count)', splits: 205, pct: 6.9, category: 'History' },
+  { feature: 'past_received_count', label: 'จำนวนโปรที่เคยได้รับ (past_received_count)', splits: 142, pct: 4.8, category: 'History' },
+  { feature: 'difficulty', label: 'ยอดซื้อขั้นต่ำ (difficulty)', splits: 130, pct: 4.4, category: 'Offer' },
+  { feature: 'age_missing', label: 'สถานะข้อมูลอายุขาดหาย (age_missing)', splits: 125, pct: 4.2, category: 'Customer' }
 ];
 
 export const PIPELINE_STAGES: PipelineStage[] = [
@@ -293,16 +315,16 @@ people = pd.Series(sorted(r.person.unique())).sample(frac=1, random_state=42).to
     step: 'Step 04',
     title: 'Multi-Model Benchmark & Overfit Test',
     status: 'completed',
-    recordsProcessed: 'Train: 46,550 | Val: 9,975 | Test: 9,976',
-    details: 'Trained Logistic Regression, Random Forest, and LightGBM. Checked Train AUC (0.842) vs Test AUC (0.821). Gap = 0.021 (< 0.05 threshold: NO OVERFITTING).',
-    codeSnippet: `lgbm_model = LGBMClassifier(n_estimators=100, max_depth=5, learning_rate=0.05, random_state=42)
+    recordsProcessed: 'Train: 30,238 | Val: 6,499 | Test: 6,603',
+    details: 'Trained Logistic Regression, Random Forest, and LightGBM. Checked Train AUC (0.8759) vs Test AUC (0.8593). Gap = 0.0167 (< 0.05 threshold: NO OVERFITTING).',
+    codeSnippet: `lgbm_model = LGBMClassifier(n_estimators=100, max_depth=5, learning_rate=0.05, num_leaves=31, random_state=42)
 lgbm_model.fit(X_train, y_train)
 
 train_auc = roc_auc_score(y_train, lgbm_model.predict_proba(X_train)[:, 1])
 test_auc = roc_auc_score(y_test, test_probs)
-# Result: Gap 0.021 < 0.05 (Passed Overfitting Audit)`,
+# Result: Gap 0.0167 < 0.05 (Passed Overfitting Audit)`,
     highlightTitle: 'AUC Gap Verification',
-    highlightText: 'Train AUC 0.842 vs Test AUC 0.821. Difference of 0.021 verifies zero overfitting on customer behavior.'
+    highlightText: 'Train AUC 0.8759 vs Test AUC 0.8593. Difference of 0.0167 verifies zero overfitting on customer behavior.'
   },
   {
     id: 5,
@@ -310,7 +332,7 @@ test_auc = roc_auc_score(y_test, test_probs)
     title: 'Optimal Business Threshold Tuning',
     status: 'completed',
     recordsProcessed: '61 Threshold Evaluations (0.20 - 0.80)',
-    details: 'Evaluated F1-Score curve. Shifted default 0.50 threshold to 0.58, raising positive precision and maximizing campaign ROI.',
+    details: 'Evaluated F1-Score curve on Validation Set. Tuned threshold from 0.50 to 0.41, lifting F1-Score to 0.8102 and Test Recall to 86.89%.',
     codeSnippet: `thresholds = np.linspace(0.2, 0.8, 61)
 best_f1, best_th = 0, 0.5
 for th in thresholds:
@@ -318,9 +340,9 @@ for th in thresholds:
     if score > best_f1:
         best_f1 = score
         best_th = th
-# Optimal Decision Threshold: 0.58 (F1 = 0.7584)`,
-    highlightTitle: 'ROI Optimization',
-    highlightText: 'Elevated cut-off to 0.58 stops sending costly discounts to passive customers who would not spend anyway.'
+# Optimal Decision Threshold: 0.41 (F1 = 0.8102)`,
+    highlightTitle: 'F1 & Recall Optimization',
+    highlightText: 'Optimal cut-off at 0.41 maximizes F1-Score (0.8102) and captures 86.89% of converting customers on the Test Set.'
   }
 ];
 
@@ -378,8 +400,8 @@ export const SAMPLE_TEST_CASES: SampleTestCase[] = [
     reward: 5,
     actual: 0,
     predictedProb: 0.412,
-    decision: 0,
-    isCorrect: true
+    decision: 1,
+    isCorrect: false // Above 0.41 threshold (0.412 >= 0.41) -> False Positive example
   },
   {
     id: 'T-8402',
@@ -448,8 +470,8 @@ export const SAMPLE_TEST_CASES: SampleTestCase[] = [
     reward: 2,
     actual: 0,
     predictedProb: 0.523,
-    decision: 0,
-    isCorrect: true // Saved by optimal 0.58 threshold (0.523 < 0.58)
+    decision: 1,
+    isCorrect: false // Above 0.41 threshold (0.523 >= 0.41) -> False Positive example
   },
   {
     id: 'T-8824',

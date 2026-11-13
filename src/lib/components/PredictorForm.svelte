@@ -39,7 +39,7 @@
   });
 
   // Threshold
-  let threshold = $state<number>(0.58);
+  let threshold = $state<number>(0.41);
 
   // Python Model Inference State
   let isLoading = $state<boolean>(true);
@@ -47,7 +47,7 @@
     status: 'loading',
     engine: 'Python LightGBM Runtime',
     probability: 0.50,
-    threshold: 0.58,
+    threshold: 0.41,
     isPositive: false,
     confidenceScore: 0,
     recommendationTitle: 'กำลังเตรียมโมเดล...',
@@ -168,7 +168,7 @@
   );
 
   const thresholdPercent = $derived<number>(
-    Math.round(cleanNumber(threshold, 0.58) * 100)
+    Math.round(cleanNumber(threshold, 0.41) * 100)
   );
 
   function scrollToVerdict() {
@@ -217,7 +217,7 @@
         <span class="font-mono text-[11px] text-neutral-400">profile.json</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
         <div>
           <label for="profile-age" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             อายุ (ปี)
@@ -287,6 +287,31 @@
             <option value={2018}>2018</option>
           </select>
         </div>
+
+        <div>
+          <label for="profile-member-month" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+            เดือนที่สมัคร
+          </label>
+          <select
+            id="profile-member-month"
+            bind:value={profile.becameMemberOnMonth}
+            onchange={markCustomized}
+            class="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm text-neutral-900 transition-colors focus:border-[#006241] focus:outline-none focus:ring-1 focus:ring-[#006241]"
+          >
+            <option value={1}>1 (ม.ค.)</option>
+            <option value={2}>2 (ก.พ.)</option>
+            <option value={3}>3 (มี.ค.)</option>
+            <option value={4}>4 (เม.ย.)</option>
+            <option value={5}>5 (พ.ค.)</option>
+            <option value={6}>6 (มิ.ย.)</option>
+            <option value={7}>7 (ก.ค.)</option>
+            <option value={8}>8 (ส.ค.)</option>
+            <option value={9}>9 (ก.ย.)</option>
+            <option value={10}>10 (ต.ค.)</option>
+            <option value={11}>11 (พ.ย.)</option>
+            <option value={12}>12 (ธ.ค.)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -318,7 +343,7 @@
         </select>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
         <div>
           <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             ประเภทโปรโมชัน
@@ -440,7 +465,7 @@
         <span class="font-mono text-[11px] text-neutral-400">transcript.json</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
         <div>
           <label for="history-tx-count" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             จำนวนบิลที่เคยซื้อ
@@ -717,7 +742,7 @@
           <p class="text-xs text-neutral-500">ปรับระดับความเข้มงวดในการส่งข้อเสนอ</p>
         </div>
         <span class="rounded-md bg-neutral-100 px-2 py-0.5 font-mono text-xs sm:text-sm font-semibold tabular-nums text-neutral-800 border border-neutral-200/50">
-          {thresholdPercent}% ({cleanNumber(threshold, 0.58).toFixed(2)})
+          {thresholdPercent}% ({cleanNumber(threshold, 0.41).toFixed(2)})
         </span>
       </div>
 
@@ -736,12 +761,12 @@
         <button
           type="button"
           onclick={() => {
-            threshold = 0.58;
+            threshold = 0.41;
             requestPrediction(50);
           }}
           class="font-medium text-[#006241] hover:underline cursor-pointer"
         >
-          รีเซ็ตเป็นค่าแนะนำ (58%)
+          รีเซ็ตเป็นค่าแนะนำ (41%)
         </button>
         <span>80% (เข้มงวดสูง)</span>
       </div>

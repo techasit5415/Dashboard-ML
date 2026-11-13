@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MODEL_METRICS } from '../data/mlData';
+  import { MODEL_METRICS, FEATURE_IMPORTANCES } from '../data/mlData';
 </script>
 
 <div class="space-y-4">
@@ -81,19 +81,19 @@
       <div class="space-y-2 text-xs text-neutral-600">
         <div class="flex justify-between py-1 border-b border-neutral-100/70">
           <span>Train Set ROC-AUC</span>
-          <span class="font-mono font-medium text-neutral-900 tabular-nums">0.8424</span>
+          <span class="font-mono font-medium text-neutral-900 tabular-nums">0.8759</span>
         </div>
         <div class="flex justify-between py-1 border-b border-neutral-100/70">
           <span>Unseen Test Set ROC-AUC</span>
-          <span class="font-mono font-medium text-[#006241] tabular-nums">0.8214</span>
+          <span class="font-mono font-medium text-[#006241] tabular-nums">0.8593</span>
         </div>
         <div class="flex justify-between py-1 border-b border-neutral-100/70">
           <span>ผลต่าง (Train-Test Gap)</span>
-          <span class="font-mono font-medium text-[#006241] tabular-nums">0.0210</span>
+          <span class="font-mono font-medium text-[#006241] tabular-nums">0.0167</span>
         </div>
       </div>
       <p class="mt-3 text-[11px] text-neutral-600 leading-relaxed">
-        ผลต่าง Gap 0.0210 ต่ำกว่าเพดาน 0.05 ยืนยันว่าโมเดลเรียนรู้รูปแบบทั่วไปได้สมบูรณ์ ไม่มีการท่องจำข้อมูล
+        ผลต่าง Gap 0.0167 ต่ำกว่าเพดาน 0.05 ยืนยันว่าโมเดลเรียนรู้รูปแบบทั่วไปได้สมบูรณ์ ไม่มีการท่องจำข้อมูล
       </p>
     </div>
 
@@ -114,16 +114,59 @@
         </div>
         <div class="flex justify-between py-1 border-b border-neutral-100/70">
           <span>เกณฑ์ที่จูนดีที่สุด (Optimal Cut-off)</span>
-          <span class="font-mono font-medium text-[#006241] tabular-nums">0.58 (58%)</span>
+          <span class="font-mono font-medium text-[#006241] tabular-nums">0.41 (41%)</span>
         </div>
         <div class="flex justify-between py-1 border-b border-neutral-100/70">
           <span>F1-Score สูงสุด</span>
-          <span class="font-mono font-medium text-[#006241] tabular-nums">0.7584 (+2.7% ประสิทธิภาพเพิ่ม)</span>
+          <span class="font-mono font-medium text-[#006241] tabular-nums">0.8102 (+0.0087 จาก 0.8015 ที่เกณฑ์ 0.50)</span>
         </div>
       </div>
       <p class="mt-3 text-[11px] text-neutral-600 leading-relaxed">
-        การยกระดับจุดตัดเป็น 0.58 ช่วยคัดกรองเฉพาะกลุ่มที่จะซื้อเพิ่มเพราะโปรโมชัน ช่วยลดต้นทุนส่วนลดที่ไม่จำเป็น
+        การปรับจุดตัดเป็น 0.41 ช่วยเพิ่ม Recall บน Test Set เป็น 86.89% และทำ F1-Score สูงสุด (0.8102 บน Validation Set)
       </p>
+    </div>
+  </div>
+
+  <!-- Global Feature Importance Visualization (from starbucks_offer_model.pkl) -->
+  <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-neutral-100 pb-3 mb-4">
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-700">
+          ความสำคัญของตัวแปร (Global Feature Importance — Top 10)
+        </h3>
+        <p class="mt-1 text-xs text-neutral-500">
+          จำนวนครั้งที่ต้นไม้ LightGBM (starbucks_offer_model.pkl) เลือกใช้แต่ละฟีเจอร์ในการแตกกิ่งตัดสินใจ (รวม 2,950 Splits)
+        </p>
+      </div>
+      <span class="rounded-md bg-neutral-100 px-2.5 py-1 font-mono text-[11px] font-medium text-neutral-700 self-start sm:self-auto">
+        importance_type = split
+      </span>
+    </div>
+
+    <div class="space-y-3">
+      {#each FEATURE_IMPORTANCES as item, idx}
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-mono text-[11px] text-neutral-400 w-4 shrink-0">#{idx + 1}</span>
+              <span class="font-medium text-neutral-800 truncate">{item.label}</span>
+              <span class="hidden sm:inline-block rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                {item.category}
+              </span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 font-mono tabular-nums text-xs">
+              <span class="text-neutral-500">{item.splits} splits</span>
+              <span class="font-semibold text-[#006241] w-12 text-right">{item.pct.toFixed(1)}%</span>
+            </div>
+          </div>
+          <div class="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
+            <div
+              class="h-full rounded-full bg-[#006241] transition-all duration-300"
+              style={`width: ${(item.pct / 12.6) * 100}%`}
+            ></div>
+          </div>
+        </div>
+      {/each}
     </div>
   </div>
 </div>

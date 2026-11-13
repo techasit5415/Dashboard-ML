@@ -31,7 +31,7 @@ feature_names = [
     'gender_F', 'gender_M', 'gender_O', 'gender_Unknown',
     'offer_type_bogo', 'offer_type_discount'
 ]
-default_threshold = 0.58
+default_threshold = 0.41
 
 try:
     if MODEL_PATH.exists():
@@ -138,20 +138,13 @@ def run_inference(payload):
         X[0, i] = feat_map.get(fname, 0.0)
 
     # 4. Model Prediction via LightGBM
-    prob = 0.50
     engine_name = "Python LightGBM (starbucks_offer_model.pkl)"
 
-    if model is not None and hasattr(model, 'predict_proba'):
-        try:
-            probs = model.predict_proba(X)
-            prob = float(probs[0, 1])
-        except Exception as pred_err:
-            sys.stderr.write(f"Model prediction error: {pred_err}\n")
-            # Safe calibrated fallback
-            prob = 0.50
-    else:
-        # Fallback if pickle is missing
-        engine_name = "Python Fallback Engine"
+    if model is None or not hasattr(model, 'predict_proba'):
+        raise RuntimeError(f"Model artifact not loaded from {MODEL_PATH}")
+
+    probs = model.predict_proba(X)
+    prob = float(probs[0, 1])
 
     rounded_prob = round(prob, 3)
     is_positive = bool(rounded_prob >= threshold)
@@ -169,62 +162,57 @@ def run_inference(payload):
     expected_profit = gross_margin - expected_cost
     roi_pct = ((expected_profit / expected_cost) * 100.0) if expected_cost > 0 else 0.0
 
-    # 6. Key Drivers
+    # 6. Key Drivers (Real LightGBM SHAP / pred_contrib=True)
     drivers = []
-    if comp_count >= 2:
-        drivers.append({
-            'name': 'เคยตอบรับโปรโมชันดี',
-            'impact': 'positive',
-            'weight': 0.85,
-            'description': f'ลูกค้าเคยทำโปรสำเร็จแล้ว {int(comp_count)} ครั้งในอดีต'
-        })
-    elif recv_count >= 2 and comp_count == 0:
-        drivers.append({
-            'name': 'ไม่ค่อยตอบรับโปรโมชัน',
-            'impact': 'negative',
-            'weight': -0.75,
-            'description': f'เคยได้รับโปรโมชันไปแล้ว {int(recv_count)} ครั้ง แต่ไม่เคยใช้สิทธิ์'
-        })
-
-    if income >= 75000:
-        drivers.append({
-            'name': 'ระดับรายได้สูง',
-            'impact': 'positive',
-            'weight': 0.65,
-            'description': f'รายได้ปีละ ${int(income):,} มีความพร้อมในการซื้อเครื่องดื่มและสินค้าพรีเมียม'
-        })
-    elif income < 45000:
-        drivers.append({
-            'name': 'กลุ่มคำนึงถึงราคา',
-            'impact': 'negative',
-            'weight': -0.45,
-            'description': f'รายได้ปีละ ${int(income):,} อาจทำให้เงื่อนไขยอดซื้อขั้นต่ำ ${int(difficulty)} สูงเกินไป'
-        })
-
-    tenure_years = max(0.0, 2018.0 - member_year)
-    if tenure_years >= 2:
-        drivers.append({
-            'name': 'สมาชิกเก่าแก่ผูกพันสูง',
-            'impact': 'positive',
-            'weight': 0.55,
-            'description': f'เป็นสมาชิกมานาน {int(tenure_years)}+ ปี มีความภักดีต่อแบรนด์สูง'
-        })
-
-    if ch_social > 0:
-        drivers.append({
-            'name': 'ช่องทาง Social เสริมการมองเห็น',
-            'impact': 'positive',
-            'weight': 0.40,
-            'description': 'โปรโมชันผ่าน Social Media เพิ่มโอกาสที่ลูกค้าจะเห็นและตอบรับโปรโมชัน'
-        })
-
-    if difficulty >= 20 and avg_spend < 10:
-        drivers.append({
-            'name': 'ยอดขั้นต่ำสูงกว่าพฤติกรรมเดิม',
-            'impact': 'negative',
-            'weight': -0.60,
-            'description': f'ยอดขั้นต่ำ ${int(difficulty)} สูงกว่ายอดซื้อเฉลี่ยเดิม (${avg_spend:.1f}) เกินเท่าตัว'
-        })
+    try:
+        contribs = model.predict(X, pred_contrib=True)[0][:len(feature_names)]
+        label_map = {
+            'age': f'อายุ ({int(age)} ปี)',
+            'income': f'รายได้ต่อปี (${int(income):,})',
+            'age_missing': 'สถานะข้อมูลอายุขาดหาย',
+            'income_missing': 'สถานะข้อมูลรายได้ขาดหาย',
+            'gender_missing': 'สถานะไม่ระบุเพศ',
+            'member_year': f'ปีที่สมัครสมาชิก ({int(member_year)})',
+            'member_month': f'เดือนที่สมัครสมาชิก ({int(member_month)})',
+            'reward': f'มูลค่ารางวัล (${reward:g})',
+            'difficulty': f'ยอดซื้อขั้นต่ำ (${difficulty:g})',
+            'duration_hours': f'ระยะเวลาโปรโมชัน ({int(duration_hours // 24)} วัน)',
+            'channel_email': 'ช่องทาง Email',
+            'channel_mobile': 'ช่องทาง Mobile App',
+            'channel_social': 'ช่องทาง Social Media',
+            'channel_web': 'ช่องทาง Web Platform',
+            'past_transaction_count': f'จำนวนครั้งที่เคยซื้อ ({int(tx_count)} ครั้ง)',
+            'past_total_spend': f'ยอดซื้อสะสมในอดีต (${total_spend:g})',
+            'past_average_spend': f'ยอดซื้อเฉลี่ยต่อบิล (${avg_spend:.2f})',
+            'past_completed_count': f'เคยทำโปรสำเร็จ ({int(comp_count)} ครั้ง)',
+            'past_received_count': f'เคยได้รับโปรทั้งหมด ({int(recv_count)} ครั้ง)',
+            'gender_F': 'เพศ: หญิง (F)',
+            'gender_M': 'เพศ: ชาย (M)',
+            'gender_O': 'เพศ: อื่นๆ (O)',
+            'gender_Unknown': 'เพศ: ไม่ระบุ',
+            'offer_type_bogo': 'ประเภทโปร: BOGO',
+            'offer_type_discount': 'ประเภทโปร: Discount'
+        }
+        ranked = sorted(
+            zip(feature_names, contribs),
+            key=lambda item: abs(float(item[1])),
+            reverse=True
+        )
+        for fname, val in ranked[:5]:
+            cval = float(val)
+            if abs(cval) < 0.01:
+                continue
+            impact = 'positive' if cval >= 0 else 'negative'
+            sign = '+' if cval >= 0 else ''
+            direction_th = 'เพิ่มโอกาสตอบรับโปรโมชัน' if cval >= 0 else 'ลดโอกาสตอบรับโปรโมชัน'
+            drivers.append({
+                'name': label_map.get(fname, fname),
+                'impact': impact,
+                'weight': round(cval, 3),
+                'description': f'SHAP Contribution: {sign}{cval:.3f} ({direction_th} จากโมเดล LightGBM จริง)'
+            })
+    except Exception as shap_err:
+        sys.stderr.write(f"SHAP contrib warning: {shap_err}\n")
 
     # Recommendations
     if rounded_prob >= 0.75:
@@ -268,13 +256,13 @@ def main():
                 raw_input = '{}'
         payload = json.loads(raw_input)
         result = run_inference(payload)
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
     except Exception as e:
         error_res = {
             'status': 'error',
             'message': str(e),
             'probability': 0.50,
-            'threshold': 0.58,
+            'threshold': 0.41,
             'isPositive': False,
             'confidenceScore': 0,
             'recommendationTitle': 'เกิดข้อผิดพลาดในการคำนวณ',
@@ -287,7 +275,7 @@ def main():
             },
             'keyDrivers': []
         }
-        print(json.dumps(error_res, ensure_ascii=False))
+        print(json.dumps(error_res, ensure_ascii=True))
 
 if __name__ == '__main__':
     main()
