@@ -171,6 +171,11 @@
     Math.round(cleanNumber(threshold, 0.41) * 100)
   );
 
+  // UI-only: scale for the diverging SHAP bar chart
+  const maxDriverWeight = $derived<number>(
+    Math.max(0, ...((result?.keyDrivers || []) as any[]).map((d) => Math.abs(cleanNumber(d?.weight, 0))))
+  );
+
   function scrollToVerdict() {
     const el = document.getElementById('verdict-card');
     if (el) {
@@ -184,7 +189,7 @@
   <div class="space-y-4 lg:col-span-7">
     <!-- Persona Selector (Quiet neutral bar) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-neutral-200/90 bg-white p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div class="flex items-center gap-2">
+      <div class="flex shrink-0 items-center gap-2 whitespace-nowrap">
         <svg class="h-4 w-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
@@ -199,7 +204,7 @@
       <select
         id="persona-preset"
         onchange={handlePresetChange}
-        class="h-9 rounded-lg border border-neutral-300/80 bg-neutral-50 px-3 text-xs sm:text-sm font-medium text-neutral-800 transition-colors focus:border-[#006241] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006241]"
+        class="h-9 w-full min-w-0 sm:w-auto sm:max-w-[65%] truncate rounded-lg border border-neutral-300/80 bg-neutral-50 px-3 text-xs sm:text-sm font-medium text-neutral-800 transition-colors focus:border-[#006241] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006241]"
       >
         <option value="">เลือกกลุ่มลูกค้าเพื่อทดสอบ</option>
         {#each CUSTOMER_PRESETS as p, i}
@@ -210,16 +215,16 @@
 
     <!-- 1. Customer Demographics Card -->
     <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div class="flex items-center justify-between border-b border-neutral-100 pb-3 mb-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-700">
+      <div class="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3 mb-4">
+        <h2 class="min-w-0 text-xs font-semibold uppercase tracking-wider text-neutral-700">
           1. ข้อมูลลูกค้า (Customer Demographics)
         </h2>
-        <span class="font-mono text-[11px] text-neutral-400">profile.json</span>
+        <span class="shrink-0 font-mono text-[11px] text-neutral-400">profile.json</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-end gap-3.5">
         <div>
-          <label for="profile-age" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="profile-age" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             อายุ (ปี)
           </label>
           <input
@@ -236,7 +241,7 @@
         </div>
 
         <div>
-          <label for="profile-gender" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="profile-gender" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             เพศ
           </label>
           <select
@@ -253,7 +258,7 @@
         </div>
 
         <div>
-          <label for="profile-income" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="profile-income" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             รายได้ต่อปี ($)
           </label>
           <input
@@ -270,7 +275,7 @@
         </div>
 
         <div>
-          <label for="profile-member-year" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="profile-member-year" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             สมาชิกตั้งแต่ปี
           </label>
           <select
@@ -289,7 +294,7 @@
         </div>
 
         <div>
-          <label for="profile-member-month" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="profile-member-month" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             เดือนที่สมัคร
           </label>
           <select
@@ -317,16 +322,16 @@
 
     <!-- 2. Promotional Offer Specs -->
     <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div class="flex items-center justify-between border-b border-neutral-100 pb-3 mb-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-700">
+      <div class="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3 mb-4">
+        <h2 class="min-w-0 text-xs font-semibold uppercase tracking-wider text-neutral-700">
           2. ข้อเสนอโปรโมชัน (Promotional Offer)
         </h2>
-        <span class="font-mono text-[11px] text-neutral-400">portfolio.json</span>
+        <span class="shrink-0 font-mono text-[11px] text-neutral-400">portfolio.json</span>
       </div>
 
       <!-- Portfolio Dropdown -->
       <div class="mb-4">
-        <label for="offer-catalog" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+        <label for="offer-catalog" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
           เลือกข้อเสนอจาก Portfolio
         </label>
         <select
@@ -343,9 +348,9 @@
         </select>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 items-end gap-3.5">
         <div>
-          <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <span class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             ประเภทโปรโมชัน
           </span>
           <div class="flex h-10 rounded-lg border border-neutral-300 bg-neutral-100 p-0.5">
@@ -381,7 +386,7 @@
         </div>
 
         <div>
-          <label for="offer-difficulty" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="offer-difficulty" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             ยอดซื้อขั้นต่ำ ($)
           </label>
           <input
@@ -398,7 +403,7 @@
         </div>
 
         <div>
-          <label for="offer-reward" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="offer-reward" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             รางวัลตอบแทน ($)
           </label>
           <input
@@ -415,7 +420,7 @@
         </div>
 
         <div>
-          <label for="offer-duration" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="offer-duration" class="block truncate whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             อายุโปรโมชัน (วัน)
           </label>
           <input
@@ -436,19 +441,19 @@
       <div class="mt-4 pt-3.5 border-t border-neutral-100">
         <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">ช่องทางการส่งข้อเสนอ</span>
         <div class="flex flex-wrap gap-2 text-xs sm:text-sm">
-          <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
+          <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
             <input type="checkbox" bind:checked={offer.channels.email} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Email</span>
           </label>
-          <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
+          <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
             <input type="checkbox" bind:checked={offer.channels.mobile} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Mobile App</span>
           </label>
-          <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
+          <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
             <input type="checkbox" bind:checked={offer.channels.social} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Social Media</span>
           </label>
-          <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
+          <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
             <input type="checkbox" bind:checked={offer.channels.web} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Web Platform</span>
           </label>
@@ -458,16 +463,16 @@
 
     <!-- 3. Customer History Signals -->
     <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div class="flex items-center justify-between border-b border-neutral-100 pb-3 mb-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-700">
+      <div class="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3 mb-4">
+        <h2 class="min-w-0 text-xs font-semibold uppercase tracking-wider text-neutral-700">
           3. ประวัติพฤติกรรมในอดีต (Historical Behavior)
         </h2>
-        <span class="font-mono text-[11px] text-neutral-400">transcript.json</span>
+        <span class="shrink-0 font-mono text-[11px] text-neutral-400">transcript.json</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 items-end gap-3.5">
         <div>
-          <label for="history-tx-count" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="history-tx-count" class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             จำนวนบิลที่เคยซื้อ
           </label>
           <input
@@ -485,7 +490,7 @@
         </div>
 
         <div>
-          <label for="history-total-spend" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="history-total-spend" class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             ยอดซื้อรวม ($)
           </label>
           <input
@@ -503,7 +508,7 @@
         </div>
 
         <div>
-          <label for="history-completed-count" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="history-completed-count" class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             ทำโปรสำเร็จ (ครั้ง)
           </label>
           <input
@@ -520,7 +525,7 @@
         </div>
 
         <div>
-          <label for="history-received-count" class="block text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
+          <label for="history-received-count" class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-1.5">
             โปรที่เคยได้รับ (ครั้ง)
           </label>
           <input
@@ -537,7 +542,7 @@
         </div>
       </div>
 
-      <div class="mt-4 flex items-center justify-between rounded-lg bg-neutral-50 px-3.5 py-2.5 text-xs sm:text-sm border border-neutral-200/60">
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 whitespace-nowrap rounded-lg bg-neutral-50 px-3.5 py-2.5 text-xs sm:text-sm border border-neutral-200/60">
         <span class="text-neutral-600">ยอดซื้อเฉลี่ยต่อบิล (Avg Ticket):</span>
         <span class="font-mono font-medium text-neutral-900 tabular-nums">
           ${cleanNumber(history.pastAverageSpend, 0).toFixed(2)} / รายการ
@@ -602,52 +607,74 @@
         <!-- ============================================== -->
         <!-- REAL PREDICTION RESULT (FROM PYTHON)           -->
         <!-- ============================================== -->
-        <!-- Section Header -->
-        <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
-          <span class="text-xs font-semibold uppercase tracking-wider text-neutral-600">
-            ผลลัพธ์การทำนาย
-          </span>
-          <span class={`rounded-md px-2.5 py-0.5 font-mono text-xs font-medium tabular-nums ${
-            result.isPositive ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' : 'bg-neutral-100 text-neutral-700'
-          }`}>
-            {result.engine || 'Python LightGBM'}
-          </span>
-        </div>
-
-        <!-- Verdict Heading Banner (SVG icons without emoji) -->
-        <div class="my-4">
-          <div class="flex items-center gap-2.5">
-            {#if result.isPositive}
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#006241] text-white">
-                <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </span>
-              <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
-                {result.recommendationTitle || 'ควรส่งโปรโมชัน (SEND OFFER)'}
-              </h3>
-            {:else}
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 text-neutral-600">
-                <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </span>
-              <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
-                {result.recommendationTitle || 'ระงับการส่ง (DO NOT SEND)'}
-              </h3>
-            {/if}
+        <!-- Hero Status Card (tone changes by verdict) -->
+        <div
+          class={`relative overflow-hidden rounded-xl p-5 transition-colors duration-300 ${
+            result.status === 'error'
+              ? 'bg-amber-50 border border-amber-200 text-amber-950'
+              : result.isPositive
+                ? 'bg-[#006241] text-white shadow-[0_8px_24px_-12px_rgba(0,98,65,0.6)]'
+                : 'bg-rose-50 border border-rose-200 text-rose-950'
+          }`}
+        >
+          <div class="flex items-center justify-between gap-3">
+            <span class={`shrink-0 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.12em] ${result.isPositive && result.status !== 'error' ? 'text-white/70' : 'opacity-60'}`}>
+              ผลลัพธ์การทำนาย
+            </span>
+            <span class={`min-w-0 truncate rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ${
+              result.isPositive && result.status !== 'error' ? 'bg-white/15 text-white' : 'bg-white/70 border border-black/5'
+            }`}>
+              {result.engine || 'Python LightGBM'}
+            </span>
           </div>
-          <p class="mt-2 text-xs sm:text-sm text-neutral-600 leading-relaxed">
+
+          <div class="mt-4 flex items-end justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  result.status === 'error'
+                    ? 'bg-amber-200 text-amber-900'
+                    : result.isPositive
+                      ? 'bg-white text-[#006241]'
+                      : 'bg-rose-200/70 text-rose-800'
+                }`}>
+                  {#if result.isPositive && result.status !== 'error'}
+                    <svg class="h-4 w-4 stroke-current stroke-[2.5] fill-none" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  {:else if result.status === 'error'}
+                    <svg class="h-4 w-4 stroke-current stroke-[2.5] fill-none" viewBox="0 0 24 24"><line x1="12" y1="7" x2="12" y2="13"></line><line x1="12" y1="17" x2="12" y2="17.01"></line></svg>
+                  {:else}
+                    <svg class="h-4 w-4 stroke-current stroke-[2.5] fill-none" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  {/if}
+                </span>
+                <span class="whitespace-nowrap text-xl sm:text-2xl font-bold tracking-tight leading-none">
+                  {result.status === 'error' ? 'ERROR' : result.isPositive ? 'RECOMMENDED' : 'DO NOT SEND'}
+                </span>
+              </div>
+              <h3 class="mt-2 text-sm font-semibold">
+                {result.recommendationTitle || (result.isPositive ? 'ควรส่งโปรโมชัน (SEND OFFER)' : 'ระงับการส่ง (DO NOT SEND)')}
+              </h3>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="whitespace-nowrap font-mono text-3xl font-bold tabular-nums leading-none">
+                {probabilityPercent.toFixed(1)}<span class="text-lg">%</span>
+              </div>
+              <div class={`mt-1 whitespace-nowrap text-[11px] ${result.isPositive && result.status !== 'error' ? 'text-white/70' : 'opacity-60'}`}>
+                vs เกณฑ์ {thresholdPercent}%
+              </div>
+            </div>
+          </div>
+
+          <p class={`mt-3 text-xs sm:text-sm leading-relaxed ${result.isPositive && result.status !== 'error' ? 'text-white/85' : 'opacity-80'}`}>
             {result.recommendationReason}
           </p>
         </div>
+        <div class="mb-4"></div>
 
         <!-- Probability Gauge Box with Visual Cut-off Marker -->
         <div class="rounded-lg border border-neutral-200/80 bg-neutral-50 p-4">
-          <div class="flex items-baseline justify-between mb-2">
-            <span class="text-xs sm:text-sm font-medium text-neutral-700">โอกาสซื้อสำเร็จ (Probability)</span>
-            <div class="text-right">
+          <div class="flex items-baseline justify-between gap-3 mb-2">
+            <span class="min-w-0 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700">โอกาสซื้อสำเร็จ (Probability)</span>
+            <div class="shrink-0 text-right">
               <span class="font-mono text-2xl font-semibold tabular-nums text-neutral-900">
                 {probabilityPercent.toFixed(1)}%
               </span>
@@ -673,7 +700,7 @@
           </div>
 
           <!-- Metric comparison label -->
-          <div class="flex items-center justify-between font-mono text-xs tabular-nums text-neutral-500 pt-1">
+          <div class="flex items-center justify-between gap-2 whitespace-nowrap font-mono text-xs tabular-nums text-neutral-500 pt-1">
             <span>0%</span>
             <span class="text-center font-sans">
               เกณฑ์ตัดสินใจ: <strong class="text-neutral-900 font-mono font-semibold">{thresholdPercent}%</strong>
@@ -687,22 +714,22 @@
 
         <!-- Financial Projections Table -->
         <div class="mt-4">
-          <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">ประมาณการผลลัพธ์ทางการเงิน (ROI Forecast)</span>
+          <span class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700 mb-2">ประมาณการผลลัพธ์ทางการเงิน (ROI Forecast)</span>
           <div class="grid grid-cols-3 gap-2.5 text-center">
             <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-              <span class="block text-[11px] text-neutral-500 uppercase font-medium">ยอดซื้อคาดการณ์</span>
+              <span class="block whitespace-nowrap text-[11px] text-neutral-500 uppercase font-medium">ยอดซื้อคาดการณ์</span>
               <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-900">
                 ${cleanNumber(result.roiEstimate?.expectedSpend, 0).toFixed(1)}
               </div>
             </div>
             <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-              <span class="block text-[11px] text-neutral-500 uppercase font-medium">ต้นทุนรางวัล</span>
+              <span class="block whitespace-nowrap text-[11px] text-neutral-500 uppercase font-medium">ต้นทุนรางวัล</span>
               <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-700">
                 ${cleanNumber(result.roiEstimate?.expectedCost, 0).toFixed(1)}
               </div>
             </div>
             <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-              <span class="block text-[11px] text-neutral-500 uppercase font-medium">กำไรส่วนเพิ่ม</span>
+              <span class="block whitespace-nowrap text-[11px] text-neutral-500 uppercase font-medium">กำไรส่วนเพิ่ม</span>
               <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-[#006241]">
                 +${cleanNumber(result.roiEstimate?.expectedProfit, 0).toFixed(1)}
               </div>
@@ -710,38 +737,58 @@
           </div>
         </div>
 
-        <!-- Key Driving Factors -->
+        <!-- Key Driving Factors: Horizontal Diverging Bar Chart (SHAP) -->
         <div class="mt-4 border-t border-neutral-100 pt-3.5">
-          <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2.5">ปัจจัยสำคัญที่มีผลต่อผลลัพธ์ (Key Drivers)</span>
-          <div class="space-y-2">
-            {#each (result.keyDrivers || []) as driver}
-              <div class="flex items-start gap-2.5 rounded-lg border border-neutral-200/70 bg-neutral-50/50 p-2.5 text-xs sm:text-sm">
-                <span class={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-mono font-bold ${
-                  driver.impact === 'positive'
-                    ? 'bg-emerald-100 text-[#006241]'
-                    : 'bg-neutral-200 text-neutral-600'
-                }`}>
-                  {driver.impact === 'positive' ? '+' : '-'}
-                </span>
-                <div>
-                  <span class="font-medium text-neutral-900">{driver.name}</span>
-                  <p class="text-neutral-500 text-xs sm:text-sm mt-0.5 leading-relaxed">{driver.description}</p>
-                </div>
-              </div>
-            {/each}
+          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 mb-3">
+            <span class="whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-700">ปัจจัยสำคัญที่มีผลต่อผลลัพธ์ (Key Drivers · SHAP)</span>
+            <div class="flex shrink-0 items-center gap-3 whitespace-nowrap text-[11px] text-neutral-500">
+              <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-sm bg-rose-400"></span>ลดโอกาส</span>
+              <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-sm bg-[#006241]"></span>เพิ่มโอกาส</span>
+            </div>
           </div>
+          {#if (result.keyDrivers || []).length === 0}
+            <p class="text-xs text-neutral-400">ไม่มีปัจจัยที่มีผลเด่นชัด</p>
+          {:else}
+            <div class="space-y-2.5">
+              {#each (result.keyDrivers || []) as driver}
+                {@const w = cleanNumber(driver.weight, 0)}
+                {@const pct = maxDriverWeight > 0 ? (Math.abs(w) / maxDriverWeight) * 50 : 0}
+                <div>
+                  <div class="flex items-center justify-between gap-2 text-xs mb-1">
+                    <span class="min-w-0 font-medium text-neutral-800 truncate" title={driver.name}>{driver.name}</span>
+                    <span class={`shrink-0 font-mono font-semibold tabular-nums ${w >= 0 ? 'text-[#006241]' : 'text-rose-600'}`}>
+                      {w >= 0 ? '+' : ''}{w.toFixed(3)}
+                    </span>
+                  </div>
+                  <div class="relative h-2.5 w-full rounded-full bg-neutral-100">
+                    <div class="absolute left-1/2 top-[-3px] bottom-[-3px] w-px bg-neutral-400"></div>
+                    {#if w >= 0}
+                      <div class="absolute left-1/2 top-0 h-full rounded-r-full bg-[#006241] transition-all duration-500" style="width: {pct}%"></div>
+                    {:else}
+                      <div class="absolute right-1/2 top-0 h-full rounded-l-full bg-rose-400 transition-all duration-500" style="width: {pct}%"></div>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+            <div class="mt-2 flex justify-between font-mono text-[10px] text-neutral-400">
+              <span>−{maxDriverWeight.toFixed(2)}</span>
+              <span>0</span>
+              <span>+{maxDriverWeight.toFixed(2)}</span>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
 
     <!-- Threshold Adjustment Slider -->
     <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div class="flex justify-between items-center mb-1.5">
-        <div>
-          <span class="text-xs sm:text-sm font-medium text-neutral-800">เกณฑ์ตัดสินใจ (Decision Threshold)</span>
+      <div class="flex justify-between items-start gap-3 mb-1.5">
+        <div class="min-w-0">
+          <span class="block whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-800">เกณฑ์ตัดสินใจ (Decision Threshold)</span>
           <p class="text-xs text-neutral-500">ปรับระดับความเข้มงวดในการส่งข้อเสนอ</p>
         </div>
-        <span class="rounded-md bg-neutral-100 px-2 py-0.5 font-mono text-xs sm:text-sm font-semibold tabular-nums text-neutral-800 border border-neutral-200/50">
+        <span class="shrink-0 whitespace-nowrap rounded-md bg-neutral-100 px-2 py-0.5 font-mono text-xs sm:text-sm font-semibold tabular-nums text-neutral-800 border border-neutral-200/50">
           {thresholdPercent}% ({cleanNumber(threshold, 0.41).toFixed(2)})
         </span>
       </div>
@@ -756,7 +803,7 @@
         class="mt-2.5 w-full accent-[#006241] cursor-pointer"
       />
 
-      <div class="mt-2 flex items-center justify-between text-xs text-neutral-500">
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 whitespace-nowrap text-xs text-neutral-500">
         <span>20% (ส่งบ่อยขึ้น)</span>
         <button
           type="button"
@@ -776,7 +823,7 @@
 
 <!-- Mobile Sticky Bottom Summary Bar (Only visible on small screens < 1024px) -->
 <div class="fixed bottom-0 left-0 right-0 z-30 lg:hidden border-t border-neutral-200 bg-white/95 backdrop-blur-xs px-4 py-2.5 shadow-lg flex items-center justify-between">
-  <div class="flex items-center gap-2">
+  <div class="flex min-w-0 items-center gap-2 whitespace-nowrap">
     {#if isLoading}
       <span class="inline-block h-2 w-2 rounded-full bg-[#006241] animate-ping"></span>
       <span class="text-xs font-medium text-neutral-600">กำลังคำนวณผ่าน Python...</span>

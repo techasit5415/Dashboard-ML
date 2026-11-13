@@ -2,6 +2,8 @@
 	import './layout.css';
 	import { page } from '$app/state';
 	import Navbar from '#lib/components/Navbar.svelte';
+	import Preloader from '#lib/components/Preloader.svelte';
+	import NavProgress from '#lib/components/NavProgress.svelte';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
 
@@ -12,7 +14,10 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-screen bg-[#f7f7f6] flex flex-col font-sans">
+<Preloader />
+<NavProgress />
+
+<div class="min-h-screen bg-[#F8F7F4] flex flex-col font-sans">
 	<!-- Persistent Navbar -->
 	<Navbar />
 

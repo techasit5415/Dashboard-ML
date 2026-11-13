@@ -20,6 +20,11 @@
       return true;
     })
   );
+
+  // UI-only summary of the rows currently displayed
+  const shownTotal = $derived<number>(filtered.length);
+  const shownCorrect = $derived<number>(filtered.filter((c) => c.isCorrect).length);
+  const shownAccuracy = $derived<number>(shownTotal > 0 ? (shownCorrect / shownTotal) * 100 : 0);
 </script>
 
 <div class="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
@@ -34,7 +39,7 @@
     </div>
 
     <!-- Filter & Search Controls -->
-    <div class="flex items-center gap-2">
+    <div class="flex shrink-0 flex-wrap items-center gap-2">
       <input
         type="text"
         placeholder="ค้นหารหัส หรือ ประเภท..."
@@ -43,7 +48,7 @@
       />
       <select
         bind:value={filter}
-        class="h-8 rounded-lg border border-neutral-300/80 bg-neutral-50 px-2.5 text-xs font-medium text-neutral-800 focus:border-[#006241] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006241]"
+        class="h-8 shrink-0 rounded-lg border border-neutral-300/80 bg-neutral-50 px-2.5 text-xs font-medium text-neutral-800 focus:border-[#006241] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006241]"
       >
         <option value="all">ทั้งหมด (All)</option>
         <option value="correct">เฉพาะที่ตรงจริง (Correct)</option>
@@ -52,8 +57,34 @@
     </div>
   </div>
 
+  <!-- Accuracy Summary Strip (based on currently displayed rows) -->
+  <div class="mb-4 grid grid-cols-1 sm:grid-cols-[auto_auto_1fr] items-center gap-4 rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3">
+    <div class="whitespace-nowrap">
+      <span class="block text-[11px] font-medium uppercase tracking-wider text-neutral-500">ตรงจริง</span>
+      <span class="font-mono text-2xl font-bold tabular-nums text-[#1E3932]">
+        {shownCorrect}<span class="text-sm font-medium text-neutral-500"> / {shownTotal} เคส</span>
+      </span>
+    </div>
+    <div class="whitespace-nowrap sm:border-l sm:border-emerald-200/70 sm:pl-4">
+      <span class="block text-[11px] font-medium uppercase tracking-wider text-neutral-500">ความแม่นยำ (รายการที่แสดง)</span>
+      <span class="font-mono text-2xl font-bold tabular-nums text-[#006241]">
+        {shownTotal > 0 ? shownAccuracy.toFixed(1) : '—'}<span class="text-sm">%</span>
+      </span>
+    </div>
+    <div class="min-w-0">
+      <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-200/80">
+        <div class="h-full bg-[#006241] transition-all duration-300" style="width: {shownAccuracy}%"></div>
+        <div class="h-full bg-rose-300 transition-all duration-300" style="width: {shownTotal > 0 ? 100 - shownAccuracy : 0}%"></div>
+      </div>
+      <div class="mt-1.5 flex justify-between gap-3 whitespace-nowrap text-[11px] text-neutral-500">
+        <span>ตรงจริง {shownCorrect}</span>
+        <span>คลาดเคลื่อน {shownTotal - shownCorrect}</span>
+      </div>
+    </div>
+  </div>
+
   <div class="overflow-x-auto">
-    <table class="w-full text-left text-xs">
+    <table class="w-full whitespace-nowrap text-left text-xs">
       <thead class="border-b border-neutral-200 bg-neutral-50/75 text-neutral-600 font-medium">
         <tr>
           <th class="py-2.5 px-3">รหัสอ้างอิง</th>
