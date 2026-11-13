@@ -2,55 +2,64 @@
   import { page } from '$app/state';
 </script>
 
-<header class="sticky top-0 z-40 border-b border-neutral-200/80 bg-white/95 backdrop-blur-xs">
-  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+<header class="sticky top-0 z-40 border-b border-[#1E3932]/10 bg-white/90 backdrop-blur-md">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 h-14">
     <!-- Brand Mark & Title -->
-    <a href="/" class="flex shrink-0 items-center gap-2.5 whitespace-nowrap hover:opacity-90 transition-opacity">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#006241] text-white">
-        <svg class="h-4 w-4 fill-current" viewBox="0 0 24 24">
-          <path d="M2 21h19a1 1 0 0 0 1-1v-1a5 5 0 0 0-5-5h-1V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v15a1 1 0 0 0 1 1zm2-16h11v9H4V5zm13 9h1a3 3 0 0 1 3 3v2h-4v-5zM4 16h11v3H4v-3z"/>
-        </svg>
+    <a href="/" class="group flex shrink-0 items-center gap-2.5 whitespace-nowrap transition-opacity hover:opacity-90">
+      <div class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ring-[#006241]/20 shadow-xs overflow-hidden bg-white transition-transform duration-200 group-hover:scale-105">
+        <img
+          src="/Starbucks_Corporation_Logo_2011.svg.webp"
+          alt="Starbucks Logo"
+          class="h-full w-full object-contain"
+        />
       </div>
-      <div>
-        <span class="text-sm font-semibold tracking-tight text-neutral-900">
-          Starbucks ML Studio
-        </span>
-      </div>
+      <span class="text-sm sm:text-[15px] font-bold tracking-tight text-[#1E3932]">
+        Starbucks ML Studio
+      </span>
     </a>
 
-    <!-- Segmented Navigation Links -->
-    <nav class="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-neutral-100 p-1 border border-neutral-200/60">
+    <!-- Clean Text Navigation Links with Bottom Active Indicator -->
+    <nav class="flex shrink-0 items-center gap-5 sm:gap-7 h-full whitespace-nowrap">
       <a
         href="/"
-        class={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-all duration-150 ${
+        class={`relative flex h-full items-center text-xs sm:text-sm font-medium transition-colors duration-150 ${
           page.url.pathname === '/' || page.url.pathname === '/predict'
-            ? 'bg-white text-neutral-900 shadow-xs'
-            : 'text-neutral-600 hover:text-neutral-900'
+            ? 'text-[#006241] font-semibold'
+            : 'text-neutral-500 hover:text-[#1E3932]'
         }`}
       >
-        ทำนายผลโปรโมชัน
+        <span>ทำนายผลโปรโมชัน</span>
+        {#if page.url.pathname === '/' || page.url.pathname === '/predict'}
+          <span class="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-t-full bg-[#006241]"></span>
+        {/if}
       </a>
 
       <a
         href="/models"
-        class={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-all duration-150 ${
+        class={`relative flex h-full items-center text-xs sm:text-sm font-medium transition-colors duration-150 ${
           page.url.pathname === '/models'
-            ? 'bg-white text-neutral-900 shadow-xs'
-            : 'text-neutral-600 hover:text-neutral-900'
+            ? 'text-[#006241] font-semibold'
+            : 'text-neutral-500 hover:text-[#1E3932]'
         }`}
       >
-        ผลลัพธ์โมเดล
+        <span>ผลลัพธ์โมเดล</span>
+        {#if page.url.pathname === '/models'}
+          <span class="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-t-full bg-[#006241]"></span>
+        {/if}
       </a>
 
       <a
         href="/samples"
-        class={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-all duration-150 ${
+        class={`relative flex h-full items-center text-xs sm:text-sm font-medium transition-colors duration-150 ${
           page.url.pathname === '/samples'
-            ? 'bg-white text-neutral-900 shadow-xs'
-            : 'text-neutral-600 hover:text-neutral-900'
+            ? 'text-[#006241] font-semibold'
+            : 'text-neutral-500 hover:text-[#1E3932]'
         }`}
       >
-        ชุดข้อมูลทดสอบ
+        <span>ชุดข้อมูลทดสอบ</span>
+        {#if page.url.pathname === '/samples'}
+          <span class="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-t-full bg-[#006241]"></span>
+        {/if}
       </a>
     </nav>
   </div>

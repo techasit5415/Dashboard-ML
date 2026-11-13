@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>ทำนายผลโปรโมชัน — Starbucks ML Studio</title>
+  <title>Starbucks ML Studio</title>
 </svelte:head>
 
 <PredictorForm />

@@ -17,7 +17,7 @@
 <Preloader />
 <NavProgress />
 
-<div class="min-h-screen bg-[#F8F7F4] flex flex-col font-sans">
+<div class="min-h-screen bg-[#F7F5F0] flex flex-col font-sans selection:bg-[#006241]/15 selection:text-[#1E3932]">
 	<!-- Persistent Navbar -->
 	<Navbar />
 
@@ -29,10 +29,15 @@
 	</main>
 
 	<!-- Clean Minimal Footer -->
-	<footer class="border-t border-neutral-200/80 bg-white py-3.5 mt-auto">
-		<div class="mx-auto max-w-6xl px-4 sm:px-6 flex items-center justify-between text-xs text-neutral-400">
-			<span>Starbucks ML Studio</span>
-			<span>© Starbucks Coffee Company</span>
+	<footer class="border-t border-[#1E3932]/10 bg-white/80 backdrop-blur-xs py-4 mt-auto">
+		<div class="mx-auto max-w-6xl px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+			<div class="flex items-center gap-2">
+				<span class="h-2 w-2 rounded-full bg-[#006241]"></span>
+				<span class="font-semibold text-[#1E3932]">Starbucks ML Studio</span>
+				<span class="text-neutral-400">·</span>
+				<span>66050193 Thatchai Limpitak | 66050050 Techasit Vanitpattarakul</span>
+			</div>
+			<span class="text-neutral-400">© Starbucks Coffee Company · Machine Learning Project</span>
 		</div>
 	</footer>
 </div>
