@@ -1,19 +1,66 @@
 @import 'tailwindcss';
 
+/* Global font stack: Plus Jakarta Sans (Latin + digits) paired with IBM Plex Sans Thai */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+}
+
 @layer base {
   :root {
     --sb-green: #006241;
     --sb-green-accent: #00754A;
     --sb-house-green: #1E3932;
+    --sb-gold: #CBA258;
     --sb-green-light: #d4e9e2;
+    --sb-cream: #F7F5F0;
+    --sb-surface-input: #F3F1EC;
   }
-}
 
-body {
-  background-color: #f7f7f6;
-  color: #171717;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  letter-spacing: -0.01em;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+  html {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+
+  body {
+    background-color: #F7F5F0;
+    color: #171717;
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.65;
+    letter-spacing: 0.005em;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  input,
+  select,
+  button,
+  textarea,
+  table {
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom smooth range slider styling */
+  input[type='range'] {
+    accent-color: #006241;
+  }
+
+  p,
+  li,
+  td {
+    line-break: strict;
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-break: strict;
+    text-wrap: balance;
+    line-height: 1.45;
+  }
 }
