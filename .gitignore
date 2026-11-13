@@ -8,6 +8,11 @@ node_modules
 /.svelte-kit
 /build
 
+# ML Data & Output
+model/data/
+model/output/
+*.pkl
+
 # OS
 .DS_Store
 Thumbs.db

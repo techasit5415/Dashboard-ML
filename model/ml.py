@@ -7,20 +7,18 @@ Original file is located at
     https://colab.research.google.com/drive/1yF74IELSRl2H8d8s0RCqafs9NptQwNt0
 """
 
-# 1. โคลน Repo ของ gauravansal มาทั้งก้อน
-!git clone https://github.com/gauravansal/Starbucks-Capstone-Challenge.git
-
-# 2. คัดลอกโฟลเดอร์ data ออกมาไว้ที่ root ของ Colab
-!rm -rf data
-!cp -r Starbucks-Capstone-Challenge/data .
-
-# 3. เช็คขนาดไฟล์ (transcript.json ต้องมีขนาดประมาณ 30-35 MB)
-!ls -lh data/
-
-import pandas as pd
+# 1. ข้อมูลอยู่ในโฟลเดอร์ data/
+# (ไม่ต้องรัน git clone ซ้ำหากมีโฟลเดอร์ data อยู่แล้ว)
+import os
+import sys
 from pathlib import Path
 
-src = Path('data')
+BASE_DIR = Path(__file__).resolve().parent
+src = BASE_DIR / 'data'
+out = BASE_DIR / 'output'
+out.mkdir(parents=True, exist_ok=True)
+
+import pandas as pd
 p = pd.read_json(src / 'profile.json', lines=True)
 o = pd.read_json(src / 'portfolio.json', lines=True)
 t = pd.read_json(src / 'transcript.json', lines=True)
@@ -38,11 +36,6 @@ def progress(percent, message):
     print(f'[{percent:3d}%] {message}', flush=True)
 
 def main():
-    # กำหนด Path ให้ทำงานบน Colab โดยตรง
-    src = Path('data')
-    out = Path('output')
-    out.mkdir(parents=True, exist_ok=True)
-
     progress(5, 'Reading source files')
     p = pd.read_json(src / 'profile.json', lines=True).rename(columns={'id': 'person'})
     o = pd.read_json(src / 'portfolio.json', lines=True).rename(columns={'id': 'offer_id'})
@@ -249,7 +242,7 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 # 1. โหลดข้อมูลจากโฟลเดอร์ output ที่สร้างไว้
-out_dir = Path('./output')
+out_dir = BASE_DIR / 'output'
 
 train_df = pd.read_csv(out_dir / 'train.csv')
 val_df = pd.read_csv(out_dir / 'validation.csv')
@@ -309,24 +302,25 @@ print(f"Train AUC: {train_auc:.4f} | Test AUC: {test_auc:.4f}")
 print(f"ผลต่าง (Gap): {abs(train_auc - test_auc):.4f} (ไม่ Overfitting หาก Gap ไม่เกิน 0.05)")
 
 # บันทึกโมเดลไว้ทำ Web App ใน Step 5
+model_path = BASE_DIR / 'starbucks_offer_model.pkl'
 artifact = {
     'model': lgbm_model,
     'features': X_train.columns.tolist(),
     'threshold': float(best_th)
 }
-joblib.dump(artifact, 'starbucks_offer_model.pkl')
-print("\nบันทึกโมเดล 'starbucks_offer_model.pkl' พร้อมใช้งานสำหรับ Web App แล้ว")
+joblib.dump(artifact, model_path)
+print(f"\nบันทึกโมเดล '{model_path.name}' พร้อมใช้งานสำหรับ Web App แล้ว")
 
 import pandas as pd
 import numpy as np
 import joblib
 
 # โหลดโมเดลและข้อมูล Test
-artifact = joblib.load('starbucks_offer_model.pkl')
+artifact = joblib.load(model_path)
 model = artifact['model']
 threshold = artifact['threshold']
 
-test_df = pd.read_csv('output/test.csv')
+test_df = pd.read_csv(out_dir / 'test.csv')
 X_test = test_df.drop(columns=['completed'])
 y_test = test_df['completed']
 

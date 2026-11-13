@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { STARBUCKS_PORTFOLIO, CUSTOMER_PRESETS, predictOfferCompletion } from '../data/mlData';
+  import { onMount } from 'svelte';
+  import { STARBUCKS_PORTFOLIO, CUSTOMER_PRESETS } from '../data/mlData';
   import type { CustomerProfile, OfferDetails, CustomerHistory, PredictionResult } from '../types/ml';
 
   // Helper to parse numbers safely and convert Thai digits (๐-๙) to Arabic digits
@@ -40,6 +41,83 @@
   // Threshold
   let threshold = $state<number>(0.58);
 
+  // Python Model Inference State
+  let isLoading = $state<boolean>(true);
+  let result = $state<any>({
+    status: 'loading',
+    engine: 'Python LightGBM Runtime',
+    probability: 0.50,
+    threshold: 0.58,
+    isPositive: false,
+    confidenceScore: 0,
+    recommendationTitle: 'กำลังเตรียมโมเดล...',
+    recommendationReason: 'กำลังโหลดข้อมูลและเชื่อมต่อ Python Model',
+    roiEstimate: {
+      expectedSpend: 0,
+      expectedCost: 0,
+      expectedProfit: 0,
+      roiPercentage: 0
+    },
+    keyDrivers: []
+  });
+
+  let debounceTimer: any = null;
+
+  async function callPythonModel() {
+    isLoading = true;
+    try {
+      const res = await fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile,
+          offer,
+          history,
+          threshold
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      result = data;
+    } catch (err: any) {
+      console.error('Python inference error:', err);
+      result = {
+        status: 'error',
+        engine: 'Python Error',
+        probability: 0.50,
+        threshold: threshold,
+        isPositive: false,
+        confidenceScore: 0,
+        recommendationTitle: 'การเชื่อมต่อ Python ขัดข้อง',
+        recommendationReason: err?.message || 'ไม่สามารถเรียก model/predict.py ได้',
+        roiEstimate: {
+          expectedSpend: 0,
+          expectedCost: 0,
+          expectedProfit: 0,
+          roiPercentage: 0
+        },
+        keyDrivers: []
+      };
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function requestPrediction(delayMs = 250) {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      callPythonModel();
+    }, delayMs);
+  }
+
+  onMount(() => {
+    callPythonModel();
+  });
+
   function handlePresetChange(e: Event) {
     const val = (e.target as HTMLSelectElement).value;
     if (val === '') {
@@ -54,6 +132,7 @@
       isCustomized = false;
       profile = { ...p.profile };
       history = { ...p.history };
+      requestPrediction(50);
     }
   }
 
@@ -61,6 +140,7 @@
     if (selectedPresetIdx !== null) {
       isCustomized = true;
     }
+    requestPrediction(300);
   }
 
   function handleOfferChange(e: Event) {
@@ -69,6 +149,7 @@
     const found = STARBUCKS_PORTFOLIO.find((o) => o.id === id);
     if (found) {
       offer = { ...found, channels: { ...found.channels } };
+      requestPrediction(50);
     }
   }
 
@@ -82,13 +163,8 @@
     }
   }
 
-  // Reactive inference result
-  const result = $derived<PredictionResult>(
-    predictOfferCompletion(profile, offer, history, threshold)
-  );
-
   const probabilityPercent = $derived<number>(
-    Math.min(100, Math.max(0, cleanNumber(result.probability, 0.5) * 100))
+    Math.min(100, Math.max(0, cleanNumber(result?.probability, 0.5) * 100))
   );
 
   const thresholdPercent = $derived<number>(
@@ -250,7 +326,10 @@
           <div class="flex h-10 rounded-lg border border-neutral-300 bg-neutral-100 p-0.5">
             <button
               type="button"
-              onclick={() => (offer.offerType = 'bogo')}
+              onclick={() => {
+                offer.offerType = 'bogo';
+                requestPrediction(50);
+              }}
               class={`flex-1 rounded-md text-xs sm:text-sm font-medium transition-all ${
                 offer.offerType === 'bogo'
                   ? 'bg-white text-neutral-900 shadow-xs font-semibold'
@@ -261,7 +340,10 @@
             </button>
             <button
               type="button"
-              onclick={() => (offer.offerType = 'discount')}
+              onclick={() => {
+                offer.offerType = 'discount';
+                requestPrediction(50);
+              }}
               class={`flex-1 rounded-md text-xs sm:text-sm font-medium transition-all ${
                 offer.offerType === 'discount'
                   ? 'bg-white text-neutral-900 shadow-xs font-semibold'
@@ -284,6 +366,7 @@
             value={offer.difficulty ?? ''}
             oninput={(e) => {
               offer.difficulty = cleanNumber(e.currentTarget.value, 0);
+              requestPrediction(300);
             }}
             class="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm tabular-nums text-neutral-900 transition-colors focus:border-[#006241] focus:outline-none focus:ring-1 focus:ring-[#006241]"
           />
@@ -300,6 +383,7 @@
             value={offer.reward ?? ''}
             oninput={(e) => {
               offer.reward = cleanNumber(e.currentTarget.value, 0);
+              requestPrediction(300);
             }}
             class="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm tabular-nums text-neutral-900 transition-colors focus:border-[#006241] focus:outline-none focus:ring-1 focus:ring-[#006241]"
           />
@@ -316,6 +400,7 @@
             value={Math.round((offer.durationHours || 120) / 24)}
             oninput={(e) => {
               offer.durationHours = cleanNumber(e.currentTarget.value, 5) * 24;
+              requestPrediction(300);
             }}
             class="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm tabular-nums text-neutral-900 transition-colors focus:border-[#006241] focus:outline-none focus:ring-1 focus:ring-[#006241]"
           />
@@ -327,19 +412,19 @@
         <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">ช่องทางการส่งข้อเสนอ</span>
         <div class="flex flex-wrap gap-2 text-xs sm:text-sm">
           <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
-            <input type="checkbox" bind:checked={offer.channels.email} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
+            <input type="checkbox" bind:checked={offer.channels.email} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Email</span>
           </label>
           <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
-            <input type="checkbox" bind:checked={offer.channels.mobile} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
+            <input type="checkbox" bind:checked={offer.channels.mobile} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Mobile App</span>
           </label>
           <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
-            <input type="checkbox" bind:checked={offer.channels.social} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
+            <input type="checkbox" bind:checked={offer.channels.social} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Social Media</span>
           </label>
           <label class="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-1.5 cursor-pointer text-neutral-700 transition-colors hover:bg-neutral-100">
-            <input type="checkbox" bind:checked={offer.channels.web} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
+            <input type="checkbox" bind:checked={offer.channels.web} onchange={() => requestPrediction(100)} class="rounded border-neutral-300 text-[#006241] focus:ring-0" />
             <span>Web Platform</span>
           </label>
         </div>
@@ -439,136 +524,189 @@
   <!-- Right Side: Clean Prediction Verdict Card (5 Columns) -->
   <div class="space-y-4 lg:col-span-5">
     <!-- Main Verdict Box -->
-    <div id="verdict-card" class="rounded-xl border border-neutral-200/90 bg-white p-5 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <!-- Section Header -->
-      <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
-        <span class="text-xs font-semibold uppercase tracking-wider text-neutral-600">
-          ผลลัพธ์การทำนาย
-        </span>
-        <span class={`rounded-md px-2.5 py-0.5 font-mono text-xs font-medium tabular-nums ${
-          result.isPositive ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' : 'bg-neutral-100 text-neutral-700'
-        }`}>
-          LightGBM
-        </span>
-      </div>
+    <div id="verdict-card" class="rounded-xl border border-neutral-200/90 bg-white p-5 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.03)] min-h-[380px]">
+      
+      {#if isLoading}
+        <!-- ============================================== -->
+        <!-- SKELETON LOADING STATE (WHILE CALLING PYTHON) -->
+        <!-- ============================================== -->
+        <div class="space-y-4 animate-pulse">
+          <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div class="h-4 w-28 bg-neutral-200 rounded"></div>
+            <div class="h-5 w-28 bg-neutral-200 rounded"></div>
+          </div>
 
-      <!-- Verdict Heading Banner (SVG icons without emoji) -->
-      <div class="my-4">
-        <div class="flex items-center gap-2.5">
-          {#if result.isPositive}
-            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#006241] text-white">
-              <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
-              ควรส่งโปรโมชัน (SEND OFFER)
-            </h3>
-          {:else}
-            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 text-neutral-600">
-              <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </span>
-            <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
-              ระงับการส่ง (DO NOT SEND)
-            </h3>
-          {/if}
-        </div>
-        <p class="mt-2 text-xs sm:text-sm text-neutral-600 leading-relaxed">
-          {result.recommendationReason}
-        </p>
-      </div>
+          <div class="my-4 space-y-2">
+            <div class="flex items-center gap-2.5">
+              <div class="h-7 w-7 rounded-full bg-neutral-200 shrink-0"></div>
+              <div class="h-6 w-48 bg-neutral-200 rounded"></div>
+            </div>
+            <div class="h-4 w-3/4 bg-neutral-100 rounded mt-2"></div>
+          </div>
 
-      <!-- Probability Gauge Box with Visual Cut-off Marker -->
-      <div class="rounded-lg border border-neutral-200/80 bg-neutral-50 p-4">
-        <div class="flex items-baseline justify-between mb-2">
-          <span class="text-xs sm:text-sm font-medium text-neutral-700">โอกาสซื้อสำเร็จ (Probability)</span>
-          <div class="text-right">
-            <span class="font-mono text-2xl font-semibold tabular-nums text-neutral-900">
-              {probabilityPercent.toFixed(1)}%
-            </span>
+          <div class="rounded-lg border border-neutral-200/80 bg-neutral-50 p-4 space-y-3">
+            <div class="flex justify-between items-center">
+              <div class="h-4 w-36 bg-neutral-200 rounded"></div>
+              <div class="h-7 w-16 bg-neutral-200 rounded"></div>
+            </div>
+            <div class="h-3 w-full bg-neutral-200 rounded-full"></div>
+            <div class="flex justify-between">
+              <div class="h-3 w-8 bg-neutral-200 rounded"></div>
+              <div class="h-3 w-32 bg-neutral-200 rounded"></div>
+              <div class="h-3 w-8 bg-neutral-200 rounded"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2.5">
+            <div class="h-16 rounded-lg bg-neutral-100"></div>
+            <div class="h-16 rounded-lg bg-neutral-100"></div>
+            <div class="h-16 rounded-lg bg-neutral-100"></div>
+          </div>
+
+          <div class="space-y-2 pt-2">
+            <div class="h-10 rounded-lg bg-neutral-100"></div>
+            <div class="h-10 rounded-lg bg-neutral-100"></div>
+          </div>
+
+          <div class="flex items-center justify-center gap-2 text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+            <span class="inline-block h-2 w-2 rounded-full bg-[#006241] animate-ping"></span>
+            <span>กำลังประมวลผลผ่าน Python Model (LightGBM)...</span>
           </div>
         </div>
-
-        <!-- Solid Progress Track with Visual Threshold Cut-off Tick Marker -->
-        <div class="relative h-3 w-full rounded-full bg-neutral-200/80 overflow-visible my-3">
-          <!-- Filled probability track -->
-          <div
-            class={`h-full rounded-full transition-all duration-200 ${
-              result.isPositive ? 'bg-[#006241]' : 'bg-neutral-400'
-            }`}
-            style="width: {probabilityPercent}%"
-          ></div>
-
-          <!-- Cut-off Line Indicator -->
-          <div
-            class="absolute top-[-3px] bottom-[-3px] w-0.5 bg-neutral-800 z-10"
-            style="left: {thresholdPercent}%"
-            title="เกณฑ์ตัดสินใจ: {thresholdPercent}%"
-          ></div>
-        </div>
-
-        <!-- Metric comparison label -->
-        <div class="flex items-center justify-between font-mono text-xs tabular-nums text-neutral-500 pt-1">
-          <span>0%</span>
-          <span class="text-center font-sans">
-            เกณฑ์ตัดสินใจ: <strong class="text-neutral-900 font-mono font-semibold">{thresholdPercent}%</strong>
-            <span class="text-[11px] text-neutral-400 ml-1">
-              ({probabilityPercent >= thresholdPercent ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์'})
-            </span>
+      {:else}
+        <!-- ============================================== -->
+        <!-- REAL PREDICTION RESULT (FROM PYTHON)           -->
+        <!-- ============================================== -->
+        <!-- Section Header -->
+        <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-neutral-600">
+            ผลลัพธ์การทำนาย
           </span>
-          <span>100%</span>
+          <span class={`rounded-md px-2.5 py-0.5 font-mono text-xs font-medium tabular-nums ${
+            result.isPositive ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' : 'bg-neutral-100 text-neutral-700'
+          }`}>
+            {result.engine || 'Python LightGBM'}
+          </span>
         </div>
-      </div>
 
-      <!-- Financial Projections Table -->
-      <div class="mt-4">
-        <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">ประมาณการผลลัพธ์ทางการเงิน</span>
-        <div class="grid grid-cols-3 gap-2.5 text-center">
-          <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-            <span class="block text-[11px] text-neutral-500 uppercase font-medium">ยอดซื้อคาดการณ์</span>
-            <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-900">
-              ${cleanNumber(result.roiEstimate?.expectedSpend, 0).toFixed(1)}
-            </div>
-          </div>
-          <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-            <span class="block text-[11px] text-neutral-500 uppercase font-medium">ต้นทุนรางวัล</span>
-            <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-700">
-              ${cleanNumber(result.roiEstimate?.expectedCost, 0).toFixed(1)}
-            </div>
-          </div>
-          <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
-            <span class="block text-[11px] text-neutral-500 uppercase font-medium">กำไรส่วนเพิ่ม</span>
-            <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-[#006241]">
-              +${cleanNumber(result.roiEstimate?.expectedProfit, 0).toFixed(1)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Key Driving Factors -->
-      <div class="mt-4 border-t border-neutral-100 pt-3.5">
-        <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2.5">ปัจจัยสำคัญที่มีผลต่อผลลัพธ์</span>
-        <div class="space-y-2">
-          {#each (result.keyDrivers || []) as driver}
-            <div class="flex items-start gap-2.5 rounded-lg border border-neutral-200/70 bg-neutral-50/50 p-2.5 text-xs sm:text-sm">
-              <span class={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-mono font-bold ${
-                driver.impact === 'positive'
-                  ? 'bg-emerald-100 text-[#006241]'
-                  : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {driver.impact === 'positive' ? '+' : '-'}
+        <!-- Verdict Heading Banner (SVG icons without emoji) -->
+        <div class="my-4">
+          <div class="flex items-center gap-2.5">
+            {#if result.isPositive}
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#006241] text-white">
+                <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
               </span>
-              <div>
-                <span class="font-medium text-neutral-900">{driver.name}</span>
-                <p class="text-neutral-500 text-xs sm:text-sm mt-0.5 leading-relaxed">{driver.description}</p>
+              <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
+                {result.recommendationTitle || 'ควรส่งโปรโมชัน (SEND OFFER)'}
+              </h3>
+            {:else}
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 text-neutral-600">
+                <svg class="h-4 w-4 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </span>
+              <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
+                {result.recommendationTitle || 'ระงับการส่ง (DO NOT SEND)'}
+              </h3>
+            {/if}
+          </div>
+          <p class="mt-2 text-xs sm:text-sm text-neutral-600 leading-relaxed">
+            {result.recommendationReason}
+          </p>
+        </div>
+
+        <!-- Probability Gauge Box with Visual Cut-off Marker -->
+        <div class="rounded-lg border border-neutral-200/80 bg-neutral-50 p-4">
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-xs sm:text-sm font-medium text-neutral-700">โอกาสซื้อสำเร็จ (Probability)</span>
+            <div class="text-right">
+              <span class="font-mono text-2xl font-semibold tabular-nums text-neutral-900">
+                {probabilityPercent.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          <!-- Solid Progress Track with Visual Threshold Cut-off Tick Marker -->
+          <div class="relative h-3 w-full rounded-full bg-neutral-200/80 overflow-visible my-3">
+            <!-- Filled probability track -->
+            <div
+              class={`h-full rounded-full transition-all duration-300 ${
+                result.isPositive ? 'bg-[#006241]' : 'bg-neutral-400'
+              }`}
+              style="width: {probabilityPercent}%"
+            ></div>
+
+            <!-- Cut-off Line Indicator -->
+            <div
+              class="absolute top-[-3px] bottom-[-3px] w-0.5 bg-neutral-800 z-10"
+              style="left: {thresholdPercent}%"
+              title="เกณฑ์ตัดสินใจ: {thresholdPercent}%"
+            ></div>
+          </div>
+
+          <!-- Metric comparison label -->
+          <div class="flex items-center justify-between font-mono text-xs tabular-nums text-neutral-500 pt-1">
+            <span>0%</span>
+            <span class="text-center font-sans">
+              เกณฑ์ตัดสินใจ: <strong class="text-neutral-900 font-mono font-semibold">{thresholdPercent}%</strong>
+              <span class="text-[11px] text-neutral-400 ml-1">
+                ({probabilityPercent >= thresholdPercent ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์'})
+              </span>
+            </span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Financial Projections Table -->
+        <div class="mt-4">
+          <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">ประมาณการผลลัพธ์ทางการเงิน (ROI Forecast)</span>
+          <div class="grid grid-cols-3 gap-2.5 text-center">
+            <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
+              <span class="block text-[11px] text-neutral-500 uppercase font-medium">ยอดซื้อคาดการณ์</span>
+              <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-900">
+                ${cleanNumber(result.roiEstimate?.expectedSpend, 0).toFixed(1)}
               </div>
             </div>
-          {/each}
+            <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
+              <span class="block text-[11px] text-neutral-500 uppercase font-medium">ต้นทุนรางวัล</span>
+              <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-neutral-700">
+                ${cleanNumber(result.roiEstimate?.expectedCost, 0).toFixed(1)}
+              </div>
+            </div>
+            <div class="rounded-lg border border-neutral-200/70 bg-neutral-50 p-2.5">
+              <span class="block text-[11px] text-neutral-500 uppercase font-medium">กำไรส่วนเพิ่ม</span>
+              <div class="mt-1 font-mono text-sm sm:text-base font-semibold tabular-nums text-[#006241]">
+                +${cleanNumber(result.roiEstimate?.expectedProfit, 0).toFixed(1)}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Key Driving Factors -->
+        <div class="mt-4 border-t border-neutral-100 pt-3.5">
+          <span class="block text-xs sm:text-sm font-medium text-neutral-700 mb-2.5">ปัจจัยสำคัญที่มีผลต่อผลลัพธ์ (Key Drivers)</span>
+          <div class="space-y-2">
+            {#each (result.keyDrivers || []) as driver}
+              <div class="flex items-start gap-2.5 rounded-lg border border-neutral-200/70 bg-neutral-50/50 p-2.5 text-xs sm:text-sm">
+                <span class={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-mono font-bold ${
+                  driver.impact === 'positive'
+                    ? 'bg-emerald-100 text-[#006241]'
+                    : 'bg-neutral-200 text-neutral-600'
+                }`}>
+                  {driver.impact === 'positive' ? '+' : '-'}
+                </span>
+                <div>
+                  <span class="font-medium text-neutral-900">{driver.name}</span>
+                  <p class="text-neutral-500 text-xs sm:text-sm mt-0.5 leading-relaxed">{driver.description}</p>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
 
     <!-- Threshold Adjustment Slider -->
@@ -589,6 +727,7 @@
         max="0.80"
         step="0.01"
         bind:value={threshold}
+        oninput={() => requestPrediction(150)}
         class="mt-2.5 w-full accent-[#006241] cursor-pointer"
       />
 
@@ -596,7 +735,10 @@
         <span>20% (ส่งบ่อยขึ้น)</span>
         <button
           type="button"
-          onclick={() => (threshold = 0.58)}
+          onclick={() => {
+            threshold = 0.58;
+            requestPrediction(50);
+          }}
           class="font-medium text-[#006241] hover:underline cursor-pointer"
         >
           รีเซ็ตเป็นค่าแนะนำ (58%)
@@ -610,16 +752,21 @@
 <!-- Mobile Sticky Bottom Summary Bar (Only visible on small screens < 1024px) -->
 <div class="fixed bottom-0 left-0 right-0 z-30 lg:hidden border-t border-neutral-200 bg-white/95 backdrop-blur-xs px-4 py-2.5 shadow-lg flex items-center justify-between">
   <div class="flex items-center gap-2">
-    {#if result.isPositive}
-      <span class="h-2.5 w-2.5 rounded-full bg-[#006241]"></span>
-      <span class="text-xs font-semibold text-neutral-900">ควรส่ง (SEND)</span>
+    {#if isLoading}
+      <span class="inline-block h-2 w-2 rounded-full bg-[#006241] animate-ping"></span>
+      <span class="text-xs font-medium text-neutral-600">กำลังคำนวณผ่าน Python...</span>
     {:else}
-      <span class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span>
-      <span class="text-xs font-semibold text-neutral-700">ระงับ (HOLD)</span>
+      {#if result.isPositive}
+        <span class="h-2.5 w-2.5 rounded-full bg-[#006241]"></span>
+        <span class="text-xs font-semibold text-neutral-900">ควรส่ง (SEND)</span>
+      {:else}
+        <span class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span>
+        <span class="text-xs font-semibold text-neutral-700">ระงับ (HOLD)</span>
+      {/if}
+      <span class="font-mono text-xs font-medium text-neutral-500">
+        ({probabilityPercent.toFixed(1)}% / {thresholdPercent}%)
+      </span>
     {/if}
-    <span class="font-mono text-xs font-medium text-neutral-500">
-      ({probabilityPercent.toFixed(1)}% / {thresholdPercent}%)
-    </span>
   </div>
   <button
     type="button"
